@@ -2,7 +2,7 @@
 
 **A beat saber quest mod which enables lighting (including chromalite/rainbow) in multiplayer.** This is my first mod and I just learned C++ yesterday so don't expect anything amazing.
 
-I made this in like 2 hours (including learning how to mod) so it basically only just picks a lighting event every time interval and applies it. Still looks significantly better than the default multiplayer static lighting in my opinion. Should be stable enough if you want to try it out.
+I made this in a short amount of time (including learning how to mod) so it basically only just picks a lighting event every time interval and applies it. Still looks significantly better than the default multiplayer static lighting in my opinion. Should be stable enough if you want to try it out.
 
 ## Installation
 
