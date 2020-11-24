@@ -1,7 +1,9 @@
 {
   "id": "mplighting",
   "name": "MultiplayerLighting",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "icon": "cover.jpg",
+  "coverImageFilename": "cover.jpg",
   "author": "Kognise",
   "description": [
     "A mod which enables lighting (including chromalite/rainbow) in multiplayer."
