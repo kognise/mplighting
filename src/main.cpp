@@ -59,7 +59,7 @@ ColorSO* getColorSO(float r, float g, float b, float a) {
 
 // Stolen from PinkUtils, utility for working with rgb colors stored as binary
 float getChannelFromNumber(int rgb, int shift) {
-	int value = (rgb >> shift) & 0x0ff; // Shitfs the bits 'shift' amounts of times to the right and only looks at the last two bytes
+	int value = (rgb >> shift) & 0x0ff; // Shifts the bits the passed number times to the right and masks to only the last two bytes
 	float floatValue = (value / 255.0); // Make a float which a color can use, a number between 0 and 1 hence we devide by 255.0
 	return floatValue;
 }
