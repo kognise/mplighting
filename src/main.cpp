@@ -54,11 +54,7 @@ ColorSO* getColorSO(UnityEngine::Color color) {
 }
 ColorSO* getColorSO(float r, float g, float b, float a) {
     UnityEngine::Color color = { r, g, b, a };
-    SimpleColorSO* colorSO = reinterpret_cast<SimpleColorSO*>(
-        UnityEngine::ScriptableObject::CreateInstance(typeof(SimpleColorSO*))
-    );
-    colorSO->SetColor(color);
-    return colorSO;
+    return getColorSO(color);
 }
 
 // Stolen from PinkUtils, utility for working with rgb colors stored as binary
