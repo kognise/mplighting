@@ -6,7 +6,7 @@ I made this in like 2 hours (including learning how to mod) so it basically only
 
 ## Installation
 
-Download the latest release from the releases page and drag it into BMBF.
+Download the latest release from the [releases page](https://github.com/kognise/mplighting/releases/latest) and drag it into BMBF.
 
 ## Credits
 
