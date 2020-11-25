@@ -64,6 +64,18 @@ float getChannelFromNumber(int rgb, int shift) {
 	return floatValue;
 }
 
+// There are very rare cases in which get_isMe will error for some reason,
+// this just exists to catch this - janky, but helps prevent crashes
+bool isMe(IConnectedPlayer* player) {
+    if (!player) return false;
+    try {
+        return player->get_isMe();
+    } catch (...) {
+        getLogger().warning("get_isMe threw an error!");
+        return false;
+    }
+}
+
 
 // Multiplayer level transition setup
 MAKE_HOOK_OFFSETLESS(
@@ -101,38 +113,43 @@ MAKE_HOOK_OFFSETLESS(
 
 // Lighting hook
 MAKE_HOOK_OFFSETLESS(MPLighting, void, MultiplayerGameplayAnimator* self, MultiplayerController::State state) {
-    if (state == MultiplayerController::State::Gameplay) {
-        animators = UnityEngine::Resources::FindObjectsOfTypeAll<MultiplayerGameplayAnimator*>();
-    } else if (state != -1) {
-        currentColor = 0;
-        animators = nullptr;
-        lastTime = -1.0;
-    }
-
-    if (!colorScheme) {
-        getLogger().warning("Color scheme is null");
-    } else if (!staticLights) {
-        ColorSO* color;
-
-        if (currentColor == 0) {
-            color = getColorSO(0.0, 0.0, 0.0, 0.0);
-        } else if (currentColor == 1) {
-            color = getColorSO(colorScheme->environmentColor0);
-        } else if (currentColor == 2) {
-            color = getColorSO(colorScheme->environmentColor1);
-        } else if (currentColor >= 2000000000) {
-            // Chroma colors are all greater than 2000000000 for separation
-            int value = value = currentColor - 2000000000;
-            color = getColorSO(
-                getChannelFromNumber(value, 16),
-                getChannelFromNumber(value, 8),
-                getChannelFromNumber(value, 0),
-                1.0
-            );
+    if (isMe(self->connectedPlayer)) {
+        if (state == MultiplayerController::State::Gameplay) {
+            animators = UnityEngine::Resources::FindObjectsOfTypeAll<MultiplayerGameplayAnimator*>();
+        } else if (state != -1) {
+            currentColor = 0;
+            animators = nullptr;
+            lastTime = -1.0;
         }
 
-        self->activeLightsColor = color;
-        self->leadingLightsColor = color;
+        if (!colorScheme) {
+            getLogger().warning("Color scheme is null");
+        } else if (!staticLights) {
+            ColorSO* color;
+
+            if (currentColor == 0) {
+                color = getColorSO(0.0, 0.0, 0.0, 0.0);
+            } else if (currentColor == 1) {
+                color = getColorSO(colorScheme->environmentColor0);
+            } else if (currentColor == 2) {
+                color = getColorSO(colorScheme->environmentColor1);
+            } else if (currentColor >= 2000000000) {
+                // Chroma colors are all greater than 2000000000 for separation
+                int value = value = currentColor - 2000000000;
+                color = getColorSO(
+                    getChannelFromNumber(value, 16),
+                    getChannelFromNumber(value, 8),
+                    getChannelFromNumber(value, 0),
+                    1.0
+                );
+            }
+
+            self->activeLightsColor = color;
+            self->leadingLightsColor = color;
+        }
+    } else {
+        self->activeLightsColor = getColorSO(colorScheme->environmentColor0);
+        self->leadingLightsColor = getColorSO(colorScheme->environmentColor1);
     }
 
     MPLighting(self, state == -1 ? static_cast<MultiplayerController::State>(MultiplayerController::State::Gameplay) : state);
@@ -141,6 +158,8 @@ MAKE_HOOK_OFFSETLESS(MPLighting, void, MultiplayerGameplayAnimator* self, Multip
 // Beatmap event hook
 MAKE_HOOK_OFFSETLESS(BeatmapEvent, void, BeatmapObjectCallbackController* self, BeatmapEventData* event) {
     BeatmapEvent(self, event);
+
+    // long t1 = std::chrono::high_resolution_clock::now().time_since_epoch().count();
 
     if (!animators || lastTime == event->time) return;
     if (event->type <= 4) {
@@ -161,10 +180,13 @@ MAKE_HOOK_OFFSETLESS(BeatmapEvent, void, BeatmapObjectCallbackController* self, 
         
         for (int i = 0; i < animators->Length(); i++) {
             MultiplayerGameplayAnimator* animator = animators->values[i];
-            if (!animator->connectedPlayer) continue;
+            if (!animator->connectedPlayer || !isMe(animator->connectedPlayer)) continue;
             animator->HandleStateChanged(-1);
         }
     }
+
+    // long t2 = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    // getLogger().info("BeatmapEvent took " + std::to_string((t2 - t1) / 1000000.0) + "ms");
 }
 
 
