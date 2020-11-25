@@ -2,7 +2,6 @@
 #include <chrono>
 using namespace GlobalNamespace;
 
-
 // Stores the ID and version of our mod, and is sent to the modloader upon startup
 static ModInfo modInfo;
 
@@ -14,6 +13,10 @@ Array<MultiplayerGameplayAnimator*>* animators;
 
 // Last event time
 float lastTime = -1.0;
+
+// Whether a specifically multiplayer lighting event has been received,
+// if true other lighting will be disabled
+bool gotMultiplayerLightingEvent = false;
 
 // Player settings
 ColorScheme* colorScheme;
@@ -76,6 +79,29 @@ bool isMe(IConnectedPlayer* player) {
     }
 }
 
+// This function has to be by itself so it can recurse in the case of specifically multiplayer
+// lighting events and correctly toggle gotMultiplayerLightingEvent
+//
+// TODO: Implement lights that fade out or flash, right now all lighting events
+// are treated as turn on and a turn off event is required to go black
+void updateFromEvent(int value, float time) {
+    if (value == 0) {
+        currentColor = 0;
+    } else if (value >= 1 && value <= 3) {
+        currentColor = 1;
+        lastTime = time;
+    } else if (value >= 5 && value <= 7) {
+        currentColor = 2;
+        lastTime = time;
+    } else if (value >= 2000000000 && value < 2200000000) {
+        currentColor = value;
+        lastTime = time;
+    } else {
+        gotMultiplayerLightingEvent = true;
+        updateFromEvent(value - 2200000000, time);
+    }
+}
+
 
 // Multiplayer level transition setup
 MAKE_HOOK_OFFSETLESS(
@@ -115,8 +141,10 @@ MAKE_HOOK_OFFSETLESS(
 MAKE_HOOK_OFFSETLESS(MPLighting, void, MultiplayerGameplayAnimator* self, MultiplayerController::State state) {
     if (isMe(self->connectedPlayer)) {
         if (state == MultiplayerController::State::Gameplay) {
+            gotMultiplayerLightingEvent = false;
             animators = UnityEngine::Resources::FindObjectsOfTypeAll<MultiplayerGameplayAnimator*>();
         } else if (state != -1) {
+            gotMultiplayerLightingEvent = false;
             currentColor = 0;
             animators = nullptr;
             lastTime = -1.0;
@@ -163,20 +191,10 @@ MAKE_HOOK_OFFSETLESS(BeatmapEvent, void, BeatmapObjectCallbackController* self, 
 
     if (!animators || lastTime == event->time) return;
     if (event->type <= 4) {
-        // TODO: Implement lights that fade out or flash, right now all lighting events
-        // are treated as turn on and a turn off event is required to go black
-         
-        if (event->value == 0) {
-            currentColor = 0;
-        } else if (event->value >= 1 && event->value <= 3) {
-            currentColor = 1;
-            lastTime = event->time;
-        } else if (event->value >= 5 && event->value <= 7) {
-            currentColor = 2;
-            lastTime = event->time;
-        } else if (event->value >= 2000000000) {
-            currentColor = event->value;
-        }
+        // If we've previously gotten multiplayer lighting events, ignore regular ones
+        if (gotMultiplayerLightingEvent && event->value < 2200000000) return;
+        
+        updateFromEvent(event->value, event->time);
         
         for (int i = 0; i < animators->Length(); i++) {
             MultiplayerGameplayAnimator* animator = animators->values[i];
