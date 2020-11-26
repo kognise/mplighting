@@ -2,6 +2,9 @@
 #include <chrono>
 using namespace GlobalNamespace;
 
+// The event type value for multiplayer-only events
+const int MULTIPLAYER_EVENT_TYPE = 1111111111;
+
 // Stores the ID and version of our mod, and is sent to the modloader upon startup
 static ModInfo modInfo;
 
@@ -76,29 +79,6 @@ bool isMe(IConnectedPlayer* player) {
     } catch (...) {
         getLogger().warning("get_isMe threw an error!");
         return false;
-    }
-}
-
-// This function has to be by itself so it can recurse in the case of specifically multiplayer
-// lighting events and correctly toggle gotMultiplayerLightingEvent
-//
-// TODO: Implement lights that fade out or flash, right now all lighting events
-// are treated as turn on and a turn off event is required to go black
-void updateFromEvent(int value, float time) {
-    if (value == 0) {
-        currentColor = 0;
-    } else if (value >= 1 && value <= 3) {
-        currentColor = 1;
-        lastTime = time;
-    } else if (value >= 5 && value <= 7) {
-        currentColor = 2;
-        lastTime = time;
-    } else if (value >= 2000000000 && value < 2100000000) {
-        currentColor = value;
-        lastTime = time;
-    } else {
-        gotMultiplayerLightingEvent = true;
-        updateFromEvent(value - 2100000000, time);
     }
 }
 
@@ -190,11 +170,24 @@ MAKE_HOOK_OFFSETLESS(BeatmapEvent, void, BeatmapObjectCallbackController* self, 
     // long t1 = std::chrono::high_resolution_clock::now().time_since_epoch().count();
 
     if (!animators || lastTime == event->time) return;
-    if (event->type <= 4) {
+    if (event->type <= 4 || event->type == MULTIPLAYER_EVENT_TYPE) {
         // If we've previously gotten multiplayer lighting events, ignore regular ones
-        if (gotMultiplayerLightingEvent && event->value < 2100000000) return;
-        
-        updateFromEvent(event->value, event->time);
+        if (gotMultiplayerLightingEvent && event->type != MULTIPLAYER_EVENT_TYPE) return;
+
+        // TODO: Implement lights that fade out or flash, right now all lighting events
+        // are treated as turn on and a turn off event is required to go black
+        if (event->value == 0) {
+            currentColor = 0;
+        } else if (event->value >= 1 && event->value <= 3) {
+            currentColor = 1;
+            lastTime = event->time;
+        } else if (event->value >= 5 && event->value <= 7) {
+            currentColor = 2;
+            lastTime = event->time;
+        } else if (event->value >= 2000000000) {
+            currentColor = event->value;
+            lastTime = event->time;
+        }
         
         for (int i = 0; i < animators->Length(); i++) {
             MultiplayerGameplayAnimator* animator = animators->values[i];
