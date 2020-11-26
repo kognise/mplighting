@@ -93,12 +93,12 @@ void updateFromEvent(int value, float time) {
     } else if (value >= 5 && value <= 7) {
         currentColor = 2;
         lastTime = time;
-    } else if (value >= 2000000000 && value < 2200000000) {
+    } else if (value >= 2000000000 && value < 2100000000) {
         currentColor = value;
         lastTime = time;
     } else {
         gotMultiplayerLightingEvent = true;
-        updateFromEvent(value - 2200000000, time);
+        updateFromEvent(value - 2100000000, time);
     }
 }
 
@@ -192,7 +192,7 @@ MAKE_HOOK_OFFSETLESS(BeatmapEvent, void, BeatmapObjectCallbackController* self, 
     if (!animators || lastTime == event->time) return;
     if (event->type <= 4) {
         // If we've previously gotten multiplayer lighting events, ignore regular ones
-        if (gotMultiplayerLightingEvent && event->value < 2200000000) return;
+        if (gotMultiplayerLightingEvent && event->value < 2100000000) return;
         
         updateFromEvent(event->value, event->time);
         
