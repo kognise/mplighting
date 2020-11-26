@@ -8,7 +8,7 @@ static ModInfo modInfo;
 // Current color
 int currentColor = 0;
 
-// Listen of active lighting animators
+// List of active lighting animators
 Array<MultiplayerGameplayAnimator*>* animators;
 
 // Last event time
