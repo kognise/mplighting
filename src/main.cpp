@@ -8,7 +8,8 @@ const int MULTIPLAYER_EVENT_TYPE = 1111111111;
 // Stores the ID and version of our mod, and is sent to the modloader upon startup
 static ModInfo modInfo;
 
-// Current color
+// Current color data
+int currentChromaColor = -1;
 int currentColor = 0;
 
 // List of active lighting animators
@@ -119,14 +120,18 @@ MAKE_HOOK_OFFSETLESS(
 
 // Lighting hook
 MAKE_HOOK_OFFSETLESS(MPLighting, void, MultiplayerGameplayAnimator* self, MultiplayerController::State state) {
+    if (state != -1) {
+        // We have to update the animators list on every non-lighting update
+        animators = UnityEngine::Resources::FindObjectsOfTypeAll<MultiplayerGameplayAnimator*>();
+    }
+
     if (isMe(self->connectedPlayer)) {
         if (state == MultiplayerController::State::Gameplay) {
             gotMultiplayerLightingEvent = false;
-            animators = UnityEngine::Resources::FindObjectsOfTypeAll<MultiplayerGameplayAnimator*>();
         } else if (state != -1) {
             gotMultiplayerLightingEvent = false;
             currentColor = 0;
-            animators = nullptr;
+            currentChromaColor = -1;
             lastTime = -1.0;
         }
 
@@ -137,19 +142,19 @@ MAKE_HOOK_OFFSETLESS(MPLighting, void, MultiplayerGameplayAnimator* self, Multip
 
             if (currentColor == 0) {
                 color = getColorSO(0.0, 0.0, 0.0, 0.0);
-            } else if (currentColor == 1) {
-                color = getColorSO(colorScheme->environmentColor0);
-            } else if (currentColor == 2) {
-                color = getColorSO(colorScheme->environmentColor1);
-            } else if (currentColor >= 2000000000) {
+            } else if (currentChromaColor != -1) {
                 // Chroma colors are all greater than 2000000000 for separation
-                int value = value = currentColor - 2000000000;
+                int value = currentChromaColor - 2000000000;
                 color = getColorSO(
                     getChannelFromNumber(value, 16),
                     getChannelFromNumber(value, 8),
                     getChannelFromNumber(value, 0),
                     1.0
                 );
+            } else if (currentColor == 1) {
+                color = getColorSO(colorScheme->environmentColor0);
+            } else if (currentColor == 2) {
+                color = getColorSO(colorScheme->environmentColor1);
             }
 
             self->activeLightsColor = color;
@@ -166,6 +171,7 @@ MAKE_HOOK_OFFSETLESS(MPLighting, void, MultiplayerGameplayAnimator* self, Multip
 // Beatmap event hook
 MAKE_HOOK_OFFSETLESS(BeatmapEvent, void, BeatmapObjectCallbackController* self, BeatmapEventData* event) {
     BeatmapEvent(self, event);
+    if (staticLights) return; // To reduce any potential lag
 
     // long t1 = std::chrono::high_resolution_clock::now().time_since_epoch().count();
 
@@ -173,6 +179,11 @@ MAKE_HOOK_OFFSETLESS(BeatmapEvent, void, BeatmapObjectCallbackController* self, 
     if (event->type <= 4 || event->type == MULTIPLAYER_EVENT_TYPE) {
         // If we've previously gotten multiplayer lighting events, ignore regular ones
         if (gotMultiplayerLightingEvent && event->type != MULTIPLAYER_EVENT_TYPE) return;
+
+        if (event->value >= 2000000000) {
+            currentChromaColor = event->value;
+            return;
+        }
 
         // TODO: Implement lights that fade out or flash, right now all lighting events
         // are treated as turn on and a turn off event is required to go black
@@ -183,9 +194,6 @@ MAKE_HOOK_OFFSETLESS(BeatmapEvent, void, BeatmapObjectCallbackController* self, 
             lastTime = event->time;
         } else if (event->value >= 5 && event->value <= 7) {
             currentColor = 2;
-            lastTime = event->time;
-        } else if (event->value >= 2000000000) {
-            currentColor = event->value;
             lastTime = event->time;
         }
         
