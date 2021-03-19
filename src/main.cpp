@@ -35,14 +35,14 @@ Configuration& getConfig() {
 }
 
 // Returns a logger, useful for printing debug messages
-const Logger& getLogger() {
-    static const Logger logger(modInfo);
-    return logger;
+Logger& getLogger() {
+    static auto logger = new Logger(modInfo, LoggerOptions(false, true));
+    return *logger;
 }
 
 // Called at the early stages of game loading
 extern "C" void setup(ModInfo& info) {
-    info.id = "mplighting";
+    info.id = ID;
     info.version = VERSION;
     modInfo = info;
 	
@@ -54,7 +54,7 @@ extern "C" void setup(ModInfo& info) {
 // Utilities for working with colors
 ColorSO* getColorSO(UnityEngine::Color color) {
     SimpleColorSO* colorSO = reinterpret_cast<SimpleColorSO*>(
-        UnityEngine::ScriptableObject::CreateInstance(typeof(SimpleColorSO*))
+        UnityEngine::ScriptableObject::CreateInstance(csTypeOf(SimpleColorSO*))
     );
     colorSO->SetColor(color);
     return colorSO;
@@ -76,7 +76,7 @@ float getChannelFromNumber(int rgb, int shift) {
 bool isMe(IConnectedPlayer* player) {
     if (!player) return false;
     try {
-        return player->get_isMe();
+        return player->get_isMe_NEW();
     } catch (...) {
         getLogger().warning("get_isMe threw an error!");
         return false;
@@ -97,12 +97,14 @@ MAKE_HOOK_OFFSETLESS(
     ColorScheme* overrideColorScheme,
     GameplayModifiers* gameplayModifiers,
     PlayerSpecificSettings* playerSpecificSettings,
+    EnvironmentEffectsFilterPreset* environmentEffectsFilterPreset,
     PracticeSettings* practiceSettings,
     bool useTestNoteCutSoundEffects
 ) {
     colorScheme = overrideColorScheme ? overrideColorScheme : self->multiplayerEnvironmentInfo->colorScheme->colorScheme;
-    staticLights = playerSpecificSettings->staticLights;
-    
+    //staticLights = playerSpecificSettings->staticLights;
+    //staticLights = environmentEffectsFilterPreset->
+
     TransitionSetup(
         self,
         gameMode,
@@ -113,6 +115,7 @@ MAKE_HOOK_OFFSETLESS(
         overrideColorScheme,
         gameplayModifiers,
         playerSpecificSettings,
+        environmentEffectsFilterPreset,
         practiceSettings,
         useTestNoteCutSoundEffects
     );
@@ -213,9 +216,11 @@ MAKE_HOOK_OFFSETLESS(BeatmapEvent, void, BeatmapObjectCallbackController* self, 
 extern "C" void load() {
     il2cpp_functions::Init();
 
+    Logger& hkLog = getLogger();
+
     getLogger().info("Installing hooks...");
-    INSTALL_HOOK_OFFSETLESS(MPLighting, il2cpp_utils::FindMethodUnsafe("", "MultiplayerGameplayAnimator", "HandleStateChanged", 1));
-    INSTALL_HOOK_OFFSETLESS(BeatmapEvent, il2cpp_utils::FindMethodUnsafe("", "BeatmapObjectCallbackController", "SendBeatmapEventDidTriggerEvent", 1));
-    INSTALL_HOOK_OFFSETLESS(TransitionSetup, il2cpp_utils::FindMethodUnsafe("", "MultiplayerLevelScenesTransitionSetupDataSO", "Init", 10));
+    INSTALL_HOOK_OFFSETLESS(hkLog, MPLighting, il2cpp_utils::FindMethodUnsafe("", "MultiplayerGameplayAnimator", "HandleStateChanged", 1));
+    INSTALL_HOOK_OFFSETLESS(hkLog, BeatmapEvent, il2cpp_utils::FindMethodUnsafe("", "BeatmapObjectCallbackController", "SendBeatmapEventDidTriggerEvent", 1));
+    INSTALL_HOOK_OFFSETLESS(hkLog, TransitionSetup, il2cpp_utils::FindMethodUnsafe("", "MultiplayerLevelScenesTransitionSetupDataSO", "Init", 10));
     getLogger().info("Installed all hooks!");
 }
