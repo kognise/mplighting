@@ -76,7 +76,7 @@ float getChannelFromNumber(int rgb, int shift) {
 bool isMe(IConnectedPlayer* player) {
     if (!player) return false;
     try {
-        return player->get_isMe_NEW();
+        return player->get_isMe();
     } catch (...) {
         getLogger().warning("get_isMe threw an error!");
         return false;
