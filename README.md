@@ -1,3 +1,7 @@
+> ⚠️ **This project is temporarily on hold!** ⚠️
+> 
+> I don't have the time or energy to update this right now but I will get back to it soon.
+
 # MultiplayerLighting
 
 **A beat saber quest mod which enables lighting (including chromalite/rainbow) in multiplayer.** This is my first mod and I just learned C++ yesterday so don't expect anything amazing.
